@@ -40,9 +40,15 @@ https://github.com/open-telemetry/opentelemetry-js/pull/5107
 
 しかし、[別のコミット](https://github.com/open-telemetry/opentelemetry-js/commit/b884eeca2e4cd6ff544ea44b8f7e4bd4027ceed0) でafterEachセットアップから削除され、テストで一回も登場しないようになってしまったようです。
 
-PRにはそのような背景も添えて、テストを追加しています。
+プルリクエストにはそのような背景も添えて、テストを追加しています。
 
-こちらに関しては小さな変更を承認者がぱぱっと修正してくれて、mainにマージされ既にリリースされています。
+PRを作ると自動でopentelemetry-jsの承認者ロールを持った人達にレビュー依頼が飛びます。
+
+こちらに関しては小さな変更を承認者がぱぱっと修正してくれて承認をもらえました。
+
+大きめのOSSで初めてのコントリビュートだったので、めちゃくちゃ嬉しかったです！！
+
+現在この変更は既にリリースされており、私のコードが品質維持に役立っているはずです。
 
 ## メトリクスのインメモリエクスポータでシャットダウン後もメトリクスデータを取得できる
 
@@ -69,8 +75,6 @@ https://github.com/open-telemetry/opentelemetry-js/issues/5131
 正直実装し始めて良いのかよくわからなかったのですが、まあ大した変更じゃないしプルリクエスト作ってみちゃうか〜というノリで実装をしました。
 
 https://github.com/open-telemetry/opentelemetry-js/pull/5214
-
-PRを作ると自動でopentelemetry-jsの承認者ロールを持った人達にレビュー依頼が飛びます。
 
 インメモリエクスポータの仕様が変わるため最初はCHANGELOG.mdに破壊的変更として記述をしました。
 
