@@ -3,25 +3,25 @@ GitHub Actionsは、リポジトリ内のコードをビルド・テスト・デ
 この記事では、OpenTelemetryを活用してGitHub Actionsの実行状況をトレースとメトリクス化する[GitHub Actions OpenTelemetry](https://github.com/marketplace/actions/github-actions-opentelemetry)を紹介します。
 これにより、どのステップに時間がかかっているか、改善施策の効果がどの程度あったのかなどを把握しやすくなります。
 
-[alt text](image-2.png)
+<figure class="figure-image figure-image-fotolife" title="Trace Sample (Jaeger)">[f:id:paper2parasol:20250224140940p:plain]<figcaption>Trace Sample (Jaeger)</figcaption></figure>
 
 [:contents]
 
 # GitHub Actionsにおける課題
 
-## ワークフローの実行結果を視覚的に確認する方法が提供されていない
+## ワークフローの詳細を可視化する方法が提供されていない
 
-GitHub Actionsではサマリー機能によりジョブの実行時間や依存関係などの概要を確認することができます。
+GitHub Actionsではサマリー機能によりジョブの実行時間や依存関係などの概要を確認することはできます。
 
-![alt text](image-1.png)
+<figure class="figure-image figure-image-fotolife" title="GitHub Actions Summary">[f:id:paper2parasol:20250224141009p:plain]<figcaption>GitHub Actions Summary</figcaption></figure>
 
-一方で各ステップの実行時間やエラーの発生箇所など、より詳細な情報を把握するためには、ジョブのログを手動で確認する必要があります。単純なワークフローであれば大きな問題はありませんが、ステップ数が多い場合や複数のジョブを持つワークフローの場合、手動でログを確認するのは手間がかかります。
+一方でジョブに含まれる各ステップの実行時間やエラーの発生箇所など、より詳細な情報を把握するためには、ジョブのログを手動で確認する必要があります。単純なワークフローであれば大きな問題はありませんが、ステップ数が多い場合や複数のジョブを持つワークフローの場合、手動でログを確認するのは手間がかかります。
 
 ## ワークフローの変更による影響を分析しづらい
 
-GitHubからはActions metricsが提供されており、失敗率や平均実行時間は参照できます。
+Actions performance metricsは提供されており、失敗率や平均実行時間は参照できます。
 
-![alt text](image.png)
+<figure class="figure-image figure-image-fotolife" title="Actions Performance Metrics">[f:id:paper2parasol:20250224141039p:plain]<figcaption>Actions Performance Metrics</figcaption></figure>
 
 しかし、ワークフローの変更による影響を定量的に確認する上では施策導入前後の比較や平均以外の統計値（パーセンタイルなど）を把握したい場合も多いです。現状では、これらの情報を取得するためには、GitHub ActionsのAPIを利用して自前で集計する必要があります。
 
@@ -33,7 +33,7 @@ GitHubからはActions metricsが提供されており、失敗率や平均実�
 
 - GitHub Actionsのワークフローとジョブ実行時間のメトリクスを収集
 - GitHub Actionsのワークフロー、ジョブ、ステップのトレースを収集
-- OTLP互換のバックエンドにデータを送信し、モニタリングと観測が可能
+- OTLP互換のバックエンドにデータを送信
 - 既存のワークフローに手を加えることなく、テレメトリを収集することが可能
 
 GitHub Actions OpenTelemetryにより、ワークフローの実行状況をトレースやメトリクスとして可視化でき、ボトルネックやエラー箇所を特定しやすくなります。
@@ -89,7 +89,7 @@ jobs:
         env:
           OTEL_SERVICE_NAME: github-actions-opentelemetry
           OTEL_EXPORTER_OTLP_ENDPOINT: https://collector-example.com
-          # JP: ヘッダーを追加できます。OTLPエンドポイントの認証に活用できます。
+          # ヘッダーを追加できます。OTLPエンドポイントの認証に活用できます。
           # 例：
           # New Relic: api-key=YOUR_NEWRELIC_API_KEY
           # Google Cloud Run: Authorization=Bearer <value of $(gcloud auth print-identity-token)>
@@ -106,8 +106,8 @@ jobs:
 
 以下にトレースやメトリクスをGoogle Cloudに送った際のサンプル画像を示します。
 
-![alt text](image-4.png)
-![alt text](image-3.png)
+<figure class="figure-image figure-image-fotolife" title="Trace Sample (Cloud Trace)">[f:id:paper2parasol:20250224141113p:plain]<figcaption>Trace Sample (Cloud Trace)</figcaption></figure>
+<figure class="figure-image figure-image-fotolife" title="Metrics Sample (Cloud Monitoring)">[f:id:paper2parasol:20250224141133p:plain]<figcaption>Metrics Sample (Cloud Monitoring)</figcaption></figure>
 
 もちろん、OTLPエンドポイントを受け付けることができれば他のツールやサービスにもデータを送信し、可視化や分析を行うことが可能です。
 
@@ -135,8 +135,7 @@ GitHub Actionsのワークフローは、複数のジョブやステップから
 
 簡単に仕組みも説明します。以下がシーケンシャル図です。
 
-![alt text](image-5.png)
-
+<figure class="figure-image figure-image-fotolife" title="Sequential Diagram">[f:id:paper2parasol:20250224141206p:plain]<figcaption>Sequential Diagram</figcaption></figure>
 GitHub Actions OpenTelemetryはGitHub APIを使って、完了したワークフローやジョブのデータを収集し、OTLP互換のエンドポイントに送信します。
 
 OpenTelemetryではリアルタイムにテレメトリを生成する利用が一般的ですが、GitHub Actions OpenTelemetryでは完了したワークフローの情報をもとにテレメトリをバッチ的に生成するというアプローチをとっています。
