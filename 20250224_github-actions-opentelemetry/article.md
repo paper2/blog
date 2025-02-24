@@ -38,6 +38,7 @@ GitHubからはActions metricsが提供されており、失敗率や平均実�
 - GitHub Actionsのワークフローとジョブ実行時間のメトリクスを収集  
 - GitHub Actionsのワークフロー、ジョブ、ステップのトレースを収集  
 - OTLP互換のバックエンドにデータを送信し、モニタリングと観測が可能 
+- 既存のワークフローに手を加えることなく、テレメトリを収集することが可能
 
 GitHub Actions OpenTelemetryにより、ワークフローの実行状況をトレースやメトリクスとして可視化でき、ボトルネックやエラー箇所を特定しやすくなります。
 また、施策前後の効果測定が容易になり、改善の優先度付けやROIを定量的に示せるようになります。
@@ -52,12 +53,15 @@ OpenTelemetryは、トレースやメトリクス、ログなどのテレメト�
 
 GitHub Actions OpenTelemetryの導入は比較的シンプルで、下記のサンプルワークフローを参考に導入できます。
 
-1. **OTLPエンドポイントの準備**  
-   まず、JaegerやPrometheusなどのOTLP互換バックエンドを用意しておき、テレメトリーデータを受信できる状態にします。  
-2. **GitHub Actions Workflowの作成**  
-   `workflow_run`イベントを使用し、完了したワークフローからメトリクスやトレースを収集するためのワークフローを新たに作成します。
+## **OTLPエンドポイントの準備**  
 
-### 最小限の設定とサンプルワークフロー
+JaegerやPrometheusなどのOTLP互換バックエンドを用意しておき、テレメトリーデータを受信できる状態にします。  
+
+OpenTelemetryを利用していない方向けにGoogle Cloud上でのOTLPエンドポイントの構築を含めた[Getting Started](https://github.com/paper2/github-actions-opentelemetry/blob/main/examples/google-cloud/README.md)も用意していますので、適宜参照してください。
+
+## **GitHub Actions Workflowの作成**  
+
+[workflow_run](https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#workflow_run)イベントを使用し、完了したワークフローからメトリクスやトレースを収集するためのワークフローを新たに作成します。最小限の設定とサンプルワークフローを以下に示します。
 
 ```yaml
 name: Send Telemetry after Other Workflow
@@ -70,11 +74,12 @@ on:
       - Continuous Integration
       - CodeQL
       - Lint Codebase
+    # このアクションはトレースとメトリクスを作成するために完了したワークフローを使用します。
     types:
       - completed
 
 permissions:
-  # プライベートリポジトリの場合に必要
+  # Required for private repositories
   actions: read
 
 jobs:
@@ -88,40 +93,71 @@ jobs:
         env:
           OTEL_SERVICE_NAME: github-actions-opentelemetry
           OTEL_EXPORTER_OTLP_ENDPOINT: https://collector-example.com
-          OTEL_EXPORTER_OTLP_HEADERS: api-key=${{ secrets.API_KEY }},other-config-value=value
+          # JP: ヘッダーを追加できます。OTLPエンドポイントの認証に活用できます。
+          # 例：
+          # New Relic: api-key=YOUR_NEWRELIC_API_KEY
+          # Google Cloud Run: Authorization=Bearer <value of $(gcloud auth print-identity-token)>
+          OTEL_EXPORTER_OTLP_HEADERS:
+            api-key=${ secrets.API_KEY },other-config-value=value
         with:
+          # トークンはワークフローのデータを収集する際に利用します。
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
 このように設定すると、指定したワークフローが完了したタイミングで、自動的にその実行結果のメトリクスやトレース情報がOTLPエンドポイントに送られます。
 
----
+その他の詳細な設定については、[GitHub Actions OpenTelemetryのリポジトリ](https://github.com/paper2/github-actions-opentelemetry/tree/main?tab=readme-ov-file#configuration)を参照してください。他にもメトリクスのみ、トレースのみの機能を有効化することも可能です。
 
-## 4. 実際のユースケースと活用事例
+以下にトレースやメトリクスをGoogle Cloudに送った際のサンプル画像を示します。
 
-### 開発現場での活用例
+![alt text](image-4.png)
+![alt text](image-3.png)
 
-- **CI/CDパイプライン全体の可視化**: 大規模なモノレポ環境や複数サービスを抱える環境で、どのジョブがボトルネックになっているのかを一目で確認可能。  
-- **複数ステップ間の依存関係を把握**: 依存ジョブが多い場合に、どこで待ちが発生しているかをトレース図で可視化しやすい。
+もちろん、OTLPエンドポイントを受け付けることができれば他のツールやサービスにもデータを送信し、可視化や分析を行うことが可能です。
 
-### CI/CD改善における効果測定に活用
-- **キャッシュ導入の効果計測**: ローカルのテストなどでビルドキャッシュが有効であると見込まれていても、実際の開発フローに組み込んだ場合の効果は異なる場合があります。OpenTelemetryで詳細に計測することで、導入前後で具体的に何秒（もしくは何％）短縮されたかを把握でき、さらに別サービスへの水平展開を検討する材料となります。  
-- **小さく始める運用**: まずは一つのワークフローやサービスで測定を始め、効果を確認できたらmonorepoの他のサービスにも適用するといった段階的アプローチが取りやすいのもメリットです。
+# ユースケース
 
----
+## 改善点の特定
+
+GitHub Actionsのワークフローは、複数のジョブやステップから構成されることが一般的です。
+ワークフロー全体の実行時間をトレースやメトリクスとして可視化することで、どのステップに時間がかかっているかを把握しやすくなります。
+例えば、ビルドやテストに時間がかかっている場合、そのステップの並列化やキャッシュ導入などの改善施策を検討することができます。
+
+また、日々の実行結果をメトリクスとして記録しておくことで、ワークフローの実行時間の変動から異常な処理の混入などにも気付きやすくなります。
+
+## 改善における効果測定
+
+改善を実施した場合に、実際にどれだけの効果があったのかを定量的に把握することにも活用できます。
+
+私は業務でビルドキャッシュの導入によるビルド時間の短縮効果を測定するためにGitHub Actions OpenTelemetryを利用しました。
+
+職場のリポジトリはモノレポ構成のため、同じワークフローでマトリックスストラテジーにより、複数マイクロサービスのジョブが実行されます。まずは小さく始めるため、一つのサービスにビルドキャッシュを導入し、その効果を測定したいと考えていました。しかし、特定のジョブの実行時間を把握するためには、ログを手動で確認する必要があり、手間がかかると感じていました。
+
+そこで、GitHub Actions OpenTelemetryを導入し、ビルドキャッシュ導入前後の実行時間をメトリクスとして記録しました。その結果、リリース時の特定ジョブの実行時間を70%削減できることがわかりました。その結果を元に、現在他のサービスへのビルドキャッシュ導入を展開しています。
+
+# 仕組み
+
+簡単に仕組みも説明します。以下がシーケンシャル図です。
+
+![alt text](image-5.png)
+
+GitHub Actions OpenTelemetryはGitHub APIを使って、完了したワークフローやジョブのデータを収集し、OTLP互換のエンドポイントに送信します。
+
+OpenTelemetryではリアルタイムにテレメトリを生成する利用が一般的ですが、GitHub Actions OpenTelemetryでは完了したワークフローの情報をもとにテレメトリをバッチ的に生成するというアプローチをとっています。
+
+そうすることにより、既存のワークフローの各ジョブでテレメトリを生成する処理などを追加する必要がなく、独立してテレメトリを収集することができます。もし各ジョブでテレメトリを生成する場合、その処理を既存のワークフローに埋め込む方法を考える必要があります。GitHub Actions OpenTelemetryでは既存のワークフローに手を加えることなく、テレメトリを収集することができるため、導入が容易です。
 
 ## 5. まとめと今後の展望
 
-- **GitHub Actions OpenTelemetryを使うメリットの再整理**  
-  1. ワークフロー全体の実行状況をトレース図やメトリクスとして可視化でき、ボトルネックやエラー箇所を特定しやすい。  
-  2. 施策前後の効果測定が容易になり、改善の優先度付けやROIを定量的に示せる。  
-  3. OTLP互換のツールと連携することで、自分好みの監視基盤にシームレスに統合可能。
+[GitHub Actions OpenTelemetry](https://github.com/marketplace/actions/github-actions-opentelemetry)は、GitHub Actionsのワークフロー、ジョブ、ステップの結果を収集し、トレースとメトリクスをOpenTelemetry Protocol（OTLP）エンドポイントに送信する仕組みを提供します。主な機能は以下のとおりです。
 
-- **今後期待されるアップデートや機能拡張**  
-  - GitHub公式メトリクスとのさらなる統合や、より詳細なテレメトリーの標準提供が期待される。  
-  - セットアップを簡略化するためのアクションやテンプレートの充実によって、導入ハードルが今後さらに下がる可能性がある。
+- GitHub Actionsのワークフローとジョブ実行時間のメトリクスを収集  
+- GitHub Actionsのワークフロー、ジョブ、ステップのトレースを収集  
+- OTLP互換のバックエンドにデータを送信し、モニタリングと観測が可能 
+- 既存のワークフローに手を加えることなく、テレメトリを収集することが可能
 
-- **読者への導入促進メッセージ**  
-  GitHub Actionsの可視化や分析にお悩みの方は、ぜひ「GitHub Actions OpenTelemetry」を検討してみてください。ワークフローの詳細な可観測性が得られれば、問題の早期発見や高速な改善が実現し、開発効率やリリース品質が大きく向上するはずです。
+GitHub Actionsの可視化や分析にお悩みの方は、ぜひ「GitHub Actions OpenTelemetry」を検討してみてください。
+オブザーバビリティが得られれば、問題の早期発見や高速な改善が実現し、開発効率やリリース品質が大きく向上するはずです。
 
-以上が、GitHub Actions OpenTelemetryの概要と導入方法、さらに実際のユースケースまでを含めた紹介でした。ワークフローの現状を可視化し、より効率的な開発と高品質なリリースを目指す方の参考になれば幸いです。
+GitHub Actions OpenTelemetryの概要と導入方法、さらにユースケースなどを紹介しました。
+ワークフローの現状を可視化し、より効率的な開発と高品質なリリースを目指す方の参考になれば幸いです。
