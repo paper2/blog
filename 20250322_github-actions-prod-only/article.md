@@ -1,11 +1,8 @@
-# GitHub EnvironmentsでGoogle Cloudの本番権限を制限する
-
-GitHub ActionsにGoogle Cloudの権限を付与することは多いですが、本番環境へ不要なアクセスを防ぐため、権限の制限はセキュリティ上非常に重要です。  
-本記事では、**GitHub Environments**を利用して、GitHub Actionsに付与するGoogle Cloudの権限を環境ごとに制御する方法を、Terraformコードと共に具体的に紹介します。
+GitHub ActionsにGoogle Cloudの権限を付与することは多いですが、本番環境へ不要なアクセスを防ぐため、権限の制限はセキュリティ上非常に重要です。  本記事では、[GitHub Environments](https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-deployments/managing-environments-for-deployment)を利用して、GitHub Actionsに付与するGoogle Cloudの権限を環境ごとに制御する方法を、Terraformコードと共に具体的に紹介します。
 
 [:contents]
 
-# 権限を制限しないリスク
+# 制限しないリスク
 
 本番環境は顧客の大切なデータやサービスが格納されているため、アクセス権限を適切に制御することが基本です。  
 GitHub Actionsに対して本番権限を制限しない場合、以下のようなリスクが考えられます。
@@ -18,33 +15,32 @@ GitHub Actionsに対して本番権限を制限しない場合、以下のよう
 
 # 対策例
 
-以下の両方の対応をすることで対策が可能です。
+以下両方の対応をすることで対策が可能です。
 
 - 特定のGitHub EnvironmentにのみGoogle Cloudの本番権限を付与する
 - そのGitHub Environmentの変更のレビューを必須にする
 
-本記事では情報が少ない前者の方法について詳しく説明します。後者の方法は複数の選択肢があると共に、良い記事があるため、本記事では以下の折りたたみで簡単にふれる程度にとどめます。
+本記事では情報が少ない前者の方法について詳しく説明します。後者の方法は複数の選択肢があると共に、良い記事もあるため、本記事では以下の折りたたみで簡単にふれる程度にとどめます。
 
 <details>
 <summary>GitHub Environmentの変更のレビューを必須にする方法</summary>
 
 1. dispatch_workflowの承認を利用する方法
-    - 参考：[GitHub Actions の environments を使ってデプロイ時に承認プロセスを導入する](https://zenn.dev/ore88ore/articles/github-actions-approval-flow)
     - ただし、privateリポジトリではGitHub Enterpriseなどのプランが必要になります
+    - 参考：[GitHub Actions の environments を使ってデプロイ時に承認プロセスを導入する](https://zenn.dev/ore88ore/articles/github-actions-approval-flow)
 2. [Protected Branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches)を併用する方法
+    - mianのマージにレビューが必須となるようにProtected branchを設定する
     - GitHub Environmentsの機能でmainブランチのみでしか利用できないようにする
       - 参考：[[GitHub Actions] ブランチごとにジョブの実行を制御できる Environments を試してみた | DevelopersIO](https://dev.classmethod.jp/articles/github-actions-environment-secrets-and-environment-variables/)
-    - mianのマージにレビューが必須となるようにProtected branchを設定する
 
 </details>
 
-# 権限を制限する方法
+# 特定のGitHub EnvironmentにのみGoogle Cloudの権限を付与する方法
 
 以下では、GitHub Environmentsを利用して、GitHub Actionsに対するGoogle Cloudの権限を制御する手法を、具体例とサンプルコードと共に紹介します。  
 サンプルとして、**dev** と **prod** の2つの環境を用意し、Cloud Runのデプロイを行います。  
-なお、prod環境は**mainブランチ**のみでデプロイ可能とし、意図しないアクセスを防止します。  
-詳細なサンプルコードは以下のリポジトリで確認できます。  
-[https://github.com/paper2/google-cloud-restricts-github-actions-sample](https://github.com/paper2/google-cloud-restricts-github-actions-sample)
+
+全てのサンプルコードは[このリポジトリ](https://github.com/paper2/google-cloud-restricts-github-actions-sample)で確認できます。  
 
 
 ## GitHub Environmentsの作成
@@ -61,12 +57,12 @@ GitHub Actionsに対して本番権限を制限しない場合、以下のよう
 
 `dev`はデフォルト設定で作成し、`prod`では以下のようにDeployment Branchesを`main`に設定します。
 
-![prod environmentの設定画面](image.png)
+<figure class="figure-image figure-image-fotolife" title="prod environmentの設定画面">[f:id:paper2parasol:20250322142326p:plain]<figcaption>prod environmentの設定画面</figcaption></figure>
 
-## Direct Workload Identity Federationの設定
+## Workload Identity Federationの設定
 
-各環境ごとにGoogle Cloudで、**Direct Workload Identity Federation**の設定を作成します。
-Direct Workload Identity Federationは、GitHub Actionsからの認証に必要な仕組みですが、ここでは詳細な解説は省略し、以前執筆した[記事](https://paper2.hatenablog.com/entry/2024/06/29/143947?_gl=1*11p0afo*_gcl_au*MTEwNDkxOTU4Mi4xNzM1MDgxOTky)を参考にしてください。
+各環境ごとにGoogle Cloudで、**Workload Identity Federation**の設定をします。
+Workload Identity Federationは、GitHub Actionsからの認証に必要な仕組みですが、ここでは詳細な解説は省略します。必要に応じて以前執筆した[記事](https://paper2.hatenablog.com/entry/2024/06/29/143947?_gl=1*11p0afo*_gcl_au*MTEwNDkxOTU4Mi4xNzM1MDgxOTky)を参考にしてください。
 
 以下は、Terraformコードの一例です。
 
@@ -101,9 +97,9 @@ resource "google_iam_workload_identity_pool_provider" "github_actions_workflow_p
 }
 ```
 
-## 各Environmentに対するIAMの設定
+## 各Environmentに対する権限付与
 
-次に、各GitHub Environmentに対してIAMの設定を行います。  
+次に、各GitHub Environmentに対して権限を付与するためのIAM設定を行います。  
 GitHub Actionsの認証に用いるプリンシパル（ここでは`github_actions_principal`）に対し、必要なロール（例：Cloud Run Developer）を付与します。
 
 ```hcl
@@ -123,13 +119,6 @@ resource "google_project_iam_member" "github_actions" {
   member = local.github_actions_principal
 }
 
-data "google_compute_default_service_account" "default" {}
-// Cloud Runのデプロイで、デフォルトのサービスアカウントがGitHub Actionsプリンシパルを扱えるように設定
-resource "google_service_account_iam_member" "default-account" {
-  service_account_id = data.google_compute_default_service_account.default.name
-  role               = "roles/iam.serviceAccountUser"
-  member             = local.github_actions_principal
-}
 ```
 
 上記設定では、`github_actions_principal`のsubjectにリポジトリ名とEnvironment名を含めています。  
@@ -219,20 +208,16 @@ jobs:
 ## ワークフローの実行
 
 今回のワークフローは、pushをトリガーとして実行されます。  
-以下の点を確認します。
 
 - **mainブランチの場合**  
   - devおよびprodの両方の環境で正常にデプロイが実行される。
-> ![mainブランチでは両方が成功する](image-3.png)  
+　<figure class="figure-image figure-image-fotolife" title="両方のデプロイが成功">[f:id:paper2parasol:20250322142409p:plain]<figcaption>両方のデプロイが成功</figcaption></figure>
   
 - **mainブランチ以外の場合**  
   - prod環境へのデプロイは、GitHub Environmentの設定により権限が付与されず、実行に失敗する。
+　<figure class="figure-image figure-image-fotolife" title="prodのデプロイが失敗">[f:id:paper2parasol:20250322142444p:plain]<figcaption>prodのデプロイが失敗</figcaption></figure>
 
-> ![main以外のブランチではprodのデプロイが失敗する](image-4.png)
-
----
-
-## 9. まとめ
+# まとめ
 
 本記事では、GitHub Environmentsを活用して、GitHub Actionsに付与するGoogle Cloudの権限を環境ごとに制御する方法を解説しました。  
 
