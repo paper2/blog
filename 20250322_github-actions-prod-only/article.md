@@ -7,20 +7,30 @@ GitHub ActionsにGoogle Cloudの権限を付与することは多いと思いま
 [:contents]
 
 # 権限を制限しないリスク
-- GitHub Actionsの権限を制限しない場合、リポジトリ内のコードを書き換えるだけで、本番環境にアクセスできるようになる
+
+大前提として本番環境は顧客の大切なデータやサービスが存在するため、アクセス権限を制限することが基本です。GitHub Actionsの権限を制限しない場合、例えば以下のようなリスクが考えられます。
+
 - カスタムGitHub Actionの検証などで、開発者が意図せず悪意のあるコードを実行してしまった場合に、本番環境にアクセスされる
+- リポジトリ内のコードを書き換えるだけで、本番環境にアクセスできるようになるため開発者の悪意による被害が発生する
 
 # 対策例
-- 特定EnvironmentにのみGoogle Cloudの本番の権限を付与する <- 本記事の対象
-  - 例えばproduction EnvironmentにのみGoogle Cloudの本番の権限を付与する
-- 特定Environmentの操作のレビューを必須にする
-  1. dispatch_workflowの承認を利用する方法
-     - [GitHub Actions の environments を使ってデプロイ時に承認プロセスを導入する](https://zenn.dev/ore88ore/articles/github-actions-approval-flow)
-  2. protected branchを併用する方法
-     - Environmentの機能でmainブランチのみでしか利用できないようにする
-        - [[GitHub Actions] ブランチごとにジョブの実行を制御できる Environments を試してみた | DevelopersIO](https://dev.classmethod.jp/articles/github-actions-environment-secrets-and-environment-variables/)
-     - mianマージに厳格なレビューが必須となる仕組みを作る
-     - production Environmentをmainブランチのみで利用できるようにする
+
+対策例として以下の合わせ技を利用する方法が考えられます。
+
+- 特定のGitHub EnvironmentにのみGoogle Cloudの本番の権限を付与する
+- そのGitHub Environmentの変更のレビューを必須にする
+
+本記事では主に前者の方法について説明します。後者の方法は複数の選択肢があると共に、良い記事があるため、本記事では以下で簡単にふれる程度にとどめます。
+
+特定のGitHub Environmentの変更のレビューを必須にするためには以下の方法が考えられます。
+
+1. dispatch_workflowの承認を利用する方法
+    - [GitHub Actions の environments を使ってデプロイ時に承認プロセスを導入する](https://zenn.dev/ore88ore/articles/github-actions-approval-flow)
+    - ただし、privateリポジトリではGitHub Enterpriseなどのプランが必要になります
+2. [Protected Branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches)を併用する方法
+    - GitHub Environmentsの機能でmainブランチのみでしか利用できないようにする
+      - 参考：[[GitHub Actions] ブランチごとにジョブの実行を制御できる Environments を試してみた | DevelopersIO](https://dev.classmethod.jp/articles/github-actions-environment-secrets-and-environment-variables/)
+    - mianのマージにレビューが必須となるようにProtected branchを設定する
 
 # 権限を制限する方法
 
@@ -219,3 +229,7 @@ environmentを指定しない場合、IAMの権限が付与されないためデ
 
 ![mainブランチでは両方が成功する](image-3.png)
 ![main以外のブランチではprodのデプロイが失敗する](image-4.png)
+
+# まとめ
+
+本記事ではGitHub Environmentsを利用して、GitHub Actionsに付与するGoogle Cloudの権限を制御する方法をTerraformのコードと共に紹介しました。
